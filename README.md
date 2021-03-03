@@ -8,6 +8,9 @@ useage:
 python labeller.py -i /path/to/image/folder
 ```
 example labelled image:
+
 ![labelled image](https://github.com/M-A-Robson/keypoint_labelling_tool/blob/main/labelled.png?raw=true)
+
 example generated yaml:
+
 ![yaml output](https://github.com/M-A-Robson/keypoint_labelling_tool/blob/main/yaml.png?raw=true)
