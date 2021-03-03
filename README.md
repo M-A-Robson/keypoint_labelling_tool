@@ -7,3 +7,7 @@ useage:
 ```
 python labeller.py -i /path/to/image/folder
 ```
+example labelled image:
+![labelled image](https://github.com/[username]/[reponame]/blob/[branch]/labelled.png?raw=true)
+example generated yaml:
+![yaml output](https://github.com/[username]/[reponame]/blob/[branch]/yaml.png?raw=true)
