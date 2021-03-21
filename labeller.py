@@ -2,6 +2,7 @@ import cv2
 import argparse
 import yaml
 import os
+import numpy as np
 
 def getFiles(path):
 	image_list=[]
@@ -10,19 +11,32 @@ def getFiles(path):
 			image_list.append(os.path.join(path, file))
 	return image_list
 
-
+count = 0
 refPt = []
+bbPt = [(0,0),(0,0)]
+
 def click_keypoint(event, x, y, flags, param):
 	global refPt
+	global bbPt
+	global count
+	global kp_names
 	# if the left mouse button was clicked, record the starting
 	# (x, y) coordinates
 	if event == cv2.EVENT_LBUTTONDOWN:
-		refPt.append({"x":x, "y":y, "visible":1})
-		# draw a rectangle around the region of interest
-		color_list = [(0,255,0), (0,0,255), (255,0,0), (255,255,0)]
+		refPt.append({"id":count, "image_coords":{"u":x, "v":y}, "visible":1, "name":kp_names[count]})
+		count += 1
+		# draw a circle at clicked point (cycle colours)
+		color_list = [(0,255,0), (0,0,255), (255,0,0), (0,255,255)]
 		col = len(refPt) % 4
-		cv2.circle(image, (x,y), 2, color_list[col], 1)
+		cv2.circle(image, (x,y), 3, color_list[col], -1)
 		cv2.imshow("image", image)
+	if event == cv2.EVENT_RBUTTONDOWN:
+		bbPt = [(x,y)]
+	elif event == cv2.EVENT_RBUTTONUP:
+		bbPt.append((x,y))
+		cv2.rectangle(image,bbPt[0],bbPt[1],(0,255,0),2) # draw bounding box
+		cv2.imshow("image", image)
+
 
 parser = argparse.ArgumentParser(description='Label keypoints on images.')
 parser.add_argument("-i", "--image_file", required=True,
@@ -46,9 +60,10 @@ for n in range(n_kps):
 image_list = getFiles(args.image_file)
 print(image_list)
 
-keypoints = {}
+keypoints = {"image_data": []}
 
 print("INSTRUCTIONS\npress r to reset image,\npress c to capture keypoints and move to next image,\npress f to record non-visible key point")
+print("click and drag right mouse button to draw bounding box for object")
 print("select keypoints in order: {}".format(kp_names))
 
 counter = 0
@@ -56,6 +71,7 @@ cont = True
 while cont: 
 	image_name = image_list[counter]
 	refPt = [] # reset list for this image
+	count = 0
 	image = cv2.imread(image_name)
 	clone = image.copy()
 	cv2.namedWindow("image")
@@ -69,25 +85,32 @@ while cont:
 		if key == ord("r"):
 			image = clone.copy()
 			refPt = []
+			count = 0
 		# if the 'c' key is pressed, break from the loop
 		elif key == ord("c"):
 			break
 		# if 'f' key pressed record blank kepoint (not visible)
 		elif key == ord("f"):
-			refPt.append({"x":-1,"y":-1, "visible":0})
+			refPt.append({"id":count, "image_coords":{"u":-1, "v":-1}, "visible":0, "name":kp_names[count]})
+			count += 1
 		if len(refPt) > n_kps:
 			print("too many keypoints selected, please retry")
 			image = clone.copy()
 			refPt = []
+			count = 0
+
+	y_min, x_min = np.asarray(bbPt).min(axis=0)
+	y_max, x_max = np.asarray(bbPt).max(axis=0)
 
 	# add to dictionary
-	zippered = dict(zip(kp_names, refPt))
-	keypoints[image_name] = zippered
+	zippered = {"image_id":image_name ,"keypoints":refPt,
+	    "bounding_box":{ "x_max":int(x_max), "x_min":int(x_min), "y_max": int(y_max), "y_min":int(y_min)}}
+	keypoints["image_data"].append(zippered)
 
 	# close all open windows
 	cv2.destroyAllWindows()
-	print('saved keypoints for {}'.format(image_name))
-	print(keypoints[image_name])
+	print('saved keypoints for ...{}'.format(image_name[-14:]))
+	print('{}/{}'.format(counter+1,len(image_list)))
 	ok = raw_input("Continue? (y/n)")
 	if ok == "n":
 		cont = False
